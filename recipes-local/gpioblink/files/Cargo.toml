@@ -1,0 +1,11 @@
+[package]
+name = "gpioblink"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only"
+description = "GPIO blink in RUST"
+repository = "file:///home/luigi/Projects/MELD_Projects/poky/meta-prova/recipes-local/gpioblink/files"
+homepage = "file:///home/luigi/Projects/MELD_Projects/poky/meta-prova/recipes-local/gpioblink"
+
+[dependencies]
+gpio-cdev = "0.6.0"

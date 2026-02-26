@@ -1,0 +1,10 @@
+[package]
+name = "hellorust"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only"
+description = "Helloworld in RUST"
+repository = "file:///home/luigi/Projects/MELD_Projects/poky/meta-prova/recipes-local/hellorust/files"
+homepage = "file:///home/luigi/Projects/MELD_Projects/poky/meta-prova/recipes-local/hellorust"
+
+[dependencies]
