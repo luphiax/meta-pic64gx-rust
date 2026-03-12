@@ -1,0 +1,62 @@
+diff --git a/pic64gx_curiosity_kit/pic64gx_curiosity_kit_amp.dtso b/pic64gx_curiosity_kit/pic64gx_curiosity_kit_amp.dtso
+index d8c3d88..e5799a7 100644
+--- a/pic64gx_curiosity_kit/pic64gx_curiosity_kit_amp.dtso
++++ b/pic64gx_curiosity_kit/pic64gx_curiosity_kit_amp.dtso
+@@ -24,55 +24,13 @@
+ 			reg = <0x0 0x91c00000 0x0 0x100000>;
+ 			no-map;
+ 		};
+-
+-		vdev0vring0: vdev0vring0@91d00000 {
+-			reg = <0x0 0x91d00000 0x0 0x8000>;
+-			no-map;
+-		};
+-
+-		vdev0vring1: vdev0vring1@91d08000 {
+-			reg = <0x0 0x91d08000 0x0 0x8000>;
+-			no-map;
+-		};
+-
+-		vdev0buffer: vdev0buff@91d10000 {
+-			compatible = "shared-dma-pool";
+-			reg = <0x0 0x91d10000 0x0 0x40000>;
+-			no-map;
+-		};
+-
+-		rsctable: rsc-table@91d50000 {
+-			reg = <0x0 0x91d50000 0x0 0x1000>;
+-			no-map;
+-		};
+-	};
+-
+-	ihc: mailbox {
+-		compatible = "microchip,sbi-ipc";
+-		interrupt-parent = <&plic>;
+-		interrupts = <180>, <179>, <178>;
+-		interrupt-names = "hart-1", "hart-2", "hart-3";
+-		#mbox-cells = <1>;
+-		status = "okay";
+-	};
+-
+-	rproc_contextb: remote-context {
+-		compatible = "microchip,ipc-sbi-remoteproc";
+-		memory-region = <&contextb_reserved>, <&rsctable>,
+-				<&vdev0vring0>, <&vdev0buffer>,
+-				<&vdev0vring1>;
+-		memory-region-names = "firmware", "rsc-table",
+-				      "vring0", "buffer", "vring1";
+-		mboxes= <&ihc 8>;
+-		status = "okay";
+ 	};
+ };
+ 
+ &cpu4 {
+-	status = "disabled"; // in use by context b
++	status = "disabled"; /* in use by standalone Zephyr */
+ };
+ 
+ &mmuart2 {
+-	status = "disabled"; // in use by context b
++	status = "disabled"; /* in use by standalone Zephyr */
+ };
+-
