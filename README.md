@@ -1,163 +1,175 @@
-# meta-pic64gx-rust (Yocto layer)
+# meta-pic64gx-rust
 
-This repository documents how to create and use a custom Yocto layer called **`meta-pic64gx-rust`** to build a minimal image for the **Microchip PIC64GX Curiosity Kit** (SMP or AMP) and deploy it to an SD card.
+This layer customizes the Microchip PIC64GX Yocto BSP to run:
 
-## Conventions
+- Linux on the standard PIC64GX AMP image flow
+- a standalone Zephyr application on `u54_4`, loaded by HSS from `payload.bin`
+- a small set of Linux user-space demo programs installed in the root filesystem
 
-Replace the following placeholders with your local paths:
+The layer does not replace the board support package from scratch. It reuses the
+Microchip machine and distro base, then overrides only the AMP firmware path.
 
-* `<yocto-workspace>` → the folder that contains `openembedded-core/` and your `build/` directory
-  Example: `<yocto-workspace> = /path/to/pic64gx_yocto`
-* `<build-dir>` → the Yocto build directory (usually `<yocto-workspace>/build`)
-* `<sd-device>` → the SD card block device (e.g. `/dev/sdb`)
+## What the layer does
 
----
+At a high level:
 
-## 1) Initialize the Yocto environment
+1. `conf/distro/pic64gx-rust.conf` defines a custom distro derived from
+   `mchp-distro`.
+2. That distro masks the stock Microchip AMP Zephyr pipeline with `BBMASK`.
+3. `recipes-local/zephyr/pic64gx-zephyr-standalone.bb` builds one selectable
+   Zephyr app from `luphiax/pic64gx-zephyr-examples`.
+4. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` repackages the resulting
+   `zephyr-amp-application.elf` into `payload.bin` with `hss-payload-generator`.
+5. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
+   Zephyr as a standalone firmware instead of a `remoteproc/OpenAMP` target.
+6. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
+   adds the Linux demo applications from this layer.
 
-From your Yocto workspace:
+## Layer layout
 
-```bash
-cd <yocto-workspace>
-source openembedded-core/oe-init-build-env
-```
+- `conf/layer.conf`
+  Registers the layer and declares dependencies on the Microchip and Zephyr
+  layers.
+- `conf/distro/pic64gx-rust.conf`
+  Defines the `pic64gx-rust` distro, sets the default Zephyr app, and masks the
+  stock AMP recipes.
+- `recipes-local/images/pic64gx-rust-image.bb`
+  Minimal Linux image used for this project.
+- `recipes-local/helloworld/`
+  Simple C user-space program installed into Linux.
+- `recipes-local/hellorust/`
+  Simple Rust user-space program installed into Linux.
+- `recipes-local/gpioblink/`
+  Rust GPIO user-space demo installed into Linux.
+- `recipes-local/zephyr/pic64gx-zephyr-standalone.bb`
+  Standalone Zephyr firmware recipe for PIC64GX AMP.
+- `recipes-bsp/u-boot/`
+  Custom HSS payload generation.
+- `recipes-bsp/dt-overlay-mchp/`
+  Patch that removes the stock `remoteproc/OpenAMP` Linux overlay nodes and
+  keeps only the memory/peripheral reservation needed by standalone Zephyr.
 
-This initializes the Yocto environment and drops you **into the build directory** (typically `<yocto-workspace>/build`).
+## Requirements
 
----
+This layer expects a Yocto workspace that already contains the standard PIC64GX
+Yocto dependencies, including:
 
-## 2) Create the layer `meta-pic64gx-rust`
+- `openembedded-core`
+- `meta-openembedded`
+- `meta-mchp`
+- `meta-zephyr`
 
-After running `oe-init-build-env`, you are already in `<build-dir>`. Create the layer:
+It also expects:
 
-```bash
-bitbake-layers create-layer pic64gx-rust
-mv pic64gx-rust ../meta-pic64gx-rust
-```
+- the custom examples repository `https://github.com/luphiax/pic64gx-zephyr-examples`
+- the Microchip AMP machine `pic64gx-curiosity-kit-amp`
 
-Now, in `<yocto-workspace>`, you should see the new layer:
+## Recommended build directory
 
-```
-<yocto-workspace>/meta-pic64gx-rust
-```
+Use a dedicated build directory for this distro instead of reusing the stock
+Microchip one.
 
-### Note about layer priority (important)
-
-Yocto resolves conflicts by **layer priority**: if two layers provide the same recipe (same `.bb` / `.bbappend` match), BitBake will select the one from the layer with **higher priority** (`BBFILE_PRIORITY`). This matters when you want to override or “neutralize” existing recipes later.
-
----
-
-## 3) Add the layer to your build configuration
-
-Go back to the build directory and add the layer:
-
-```bash
-cd <build-dir>
-bitbake-layers add-layer ../meta-pic64gx-rust
-```
-
-This updates `bblayers.conf`, so the layer will be available for all future builds.
-
-Verify:
-
-```bash
-bitbake-layers show-layers
-```
-
----
-
-## 4) Create a custom minimal image: `pic64gx-rust-image`
-
-The idea is to start from the upstream minimal image **`core-image-minimal`** (from OpenEmbedded / `openembedded-core/meta`) and then append your own packages/programs via your custom layer.
-
-### Why the path looks “relative”
-
-BitBake searches recipes through the `BBPATH` list (all layer paths). Since `openembedded-core/meta` is in that list, you can refer to the base image using a relative path like:
-
-```
-recipes-core/images/core-image-minimal.bb
-```
-
-because the full path resolves to:
-
-```
-openembedded-core/meta/recipes-core/images/core-image-minimal.bb
-```
-
-### Recommended file location inside your layer
-
-Create your image recipe inside the layer, for example:
-
-```
-meta-pic64gx-rust/
-└── recipes-local/
-    └── images/
-        └── pic64gx-rust-image.bb
-```
-
-Example skeleton (adjust package names to your recipes):
-
-```bitbake
-# meta-pic64gx-rust/recipes-local/images/pic64gx-rust-image.bb
-
-require recipes-core/images/core-image-minimal.bb
-
-# Add your packages (built from your recipes)
-IMAGE_INSTALL:append = " <your-package-1> <your-package-2> "
-```
-
----
-
-## 5) Build the image (SMP / AMP)
-
-Initialize the environment first:
+Example:
 
 ```bash
 cd <yocto-workspace>
-source openembedded-core/oe-init-build-env
+source openembedded-core/oe-init-build-env build-pic64gx-rust
 ```
 
-Then build depending on the target:
+Using a separate build directory avoids mixing cache, configuration, and output
+artifacts between `mchp-distro` and `pic64gx-rust`.
 
-### SMP
+## Add the layer
+
+From the active build directory:
 
 ```bash
-MACHINE=pic64gx-curiosity-kit bitbake pic64gx-rust-image
+bitbake-layers add-layer <yocto-workspace>/meta-pic64gx-rust
 ```
 
-### AMP
+Make sure the other PIC64GX/Microchip layers are also present in
+`conf/bblayers.conf`.
+
+## Select the distro
+
+In the build directory configuration file
+`<build-dir>/conf/local.conf` set:
+
+```conf
+DISTRO = "pic64gx-rust"
+```
+
+`MACHINE` can still be provided from the command line. The intended machine is:
+
+```conf
+MACHINE = "pic64gx-curiosity-kit-amp"
+```
+
+## Supported Zephyr applications
+
+The standalone Zephyr recipe currently supports:
+
+- `blinky_amp`
+- `helloworld_amp`
+
+If no application is selected explicitly, the distro default is:
+
+```conf
+PIC64GX_ZEPHYR_APP ?= "blinky_amp"
+```
+
+## Build the image
+
+### Default Zephyr app
+
+If you want the default `blinky_amp` firmware:
 
 ```bash
 MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
-In this flow we deliberately stick to a **minimal** base image, instead of Microchip’s default image, because we don’t want the default Microchip userland packages.
+### Select the Zephyr app from the command line
 
----
-
-## 6) Flash the `.wic` image to the SD card (with `bmaptool`)
-
-1. Identify the SD card device:
-
-   ```bash
-   lsblk
-   ```
-
-   In the examples below, the SD card is `<sd-device>` (e.g. `/dev/sdb`).
-
-2. **Unmount** the SD card partitions from your desktop environment (file manager) before flashing.
-
-> ⚠️ Double-check `<sd-device>`. Flashing the wrong device can destroy data on your PC.
-
-### SMP flash command
+To choose the Zephyr firmware at build time, allow BitBake to import
+`PIC64GX_ZEPHYR_APP` from the shell and then build:
 
 ```bash
-sudo bmaptool copy \
-  <build-dir>/tmp-glibc/deploy/images/pic64gx-curiosity-kit/pic64gx-rust-image-pic64gx-curiosity-kit.rootfs.wic \
-  <sd-device>
+export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PIC64GX_ZEPHYR_APP"
+PIC64GX_ZEPHYR_APP=helloworld_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
-### AMP flash command
+For `blinky_amp`:
+
+```bash
+PIC64GX_ZEPHYR_APP=blinky_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
+```
+
+## Generated artifacts
+
+After the build, the main output directory is:
+
+```text
+<build-dir>/tmp-glibc/deploy/images/pic64gx-curiosity-kit-amp/
+```
+
+Important files:
+
+- `pic64gx-rust-image-pic64gx-curiosity-kit-amp.rootfs.wic`
+  Full SD image.
+- `pic64gx-rust-image-pic64gx-curiosity-kit-amp.rootfs.wic.gz`
+  Compressed form of the full SD image.
+- `payload.bin`
+  HSS payload used inside the image.
+- `payload-<app>.bin`
+  App-specific copy of the payload.
+- `zephyr-amp-application.elf`
+  Canonical Zephyr ELF consumed by HSS payload generation.
+- `pic64gx-zephyr-<app>.elf`
+  App-specific Zephyr ELF for inspection/debugging.
+
+## Flash the SD card
+
+To write the whole image:
 
 ```bash
 sudo bmaptool copy \
@@ -165,30 +177,77 @@ sudo bmaptool copy \
   <sd-device>
 ```
 
----
+Replace:
 
-## 7) Serial consoles (screen)
+- `<build-dir>` with the active build directory, for example
+  `<yocto-workspace>/build-pic64gx-rust`
+- `<sd-device>` with the SD card block device, for example `/dev/sdb`
 
-PIC64GX exposes multiple debug serial ports. Use `screen` with the corresponding device:
+Double-check the target device before flashing.
 
-### Linux shell + development tools (context C)
+## What boots on the board
 
-```bash
-screen /dev/ttyUSB-MCHPDebugSerialC 115200
-```
+After flashing the SD:
 
-### HSS bootloader logs (context B)
+- HSS loads `u-boot.bin` for the Linux domain on `u54_1`, `u54_2`, `u54_3`
+- HSS loads the selected Zephyr application on `u54_4`
+- U-Boot boots Linux from the generated image
+- Linux and Zephyr run in parallel
 
-```bash
-screen /dev/ttyUSB-MCHPDebugSerialB 115200
-```
+In this design, Zephyr is not started by Linux `remoteproc`. It is started by
+HSS as a standalone firmware.
 
-### Secondary context (e.g., Zephyr) (context D)
+## How to run the programs
+
+### Zephyr firmware
+
+The Zephyr app selected with `PIC64GX_ZEPHYR_APP` starts automatically at boot.
+There is nothing to launch manually from Linux.
+
+To observe its serial output, use the Zephyr/U54_4 debug UART:
 
 ```bash
 screen /dev/ttyUSB-MCHPDebugSerialD 115200
 ```
 
-Tip: to exit `screen`, press `Ctrl+A`, then `K`, then confirm with `y`.
+### Linux user-space demos
 
----
+Open the Linux console:
+
+```bash
+screen /dev/ttyUSB-MCHPDebugSerialC 115200
+```
+
+Then run the programs directly from the shell:
+
+```bash
+helloworld
+hellorust
+gpioblink
+```
+
+### HSS boot logs
+
+To watch the bootloader side:
+
+```bash
+screen /dev/ttyUSB-MCHPDebugSerialB 115200
+```
+
+## Why the custom Linux overlay is needed
+
+The stock Microchip AMP overlay describes the remote firmware as an
+`OpenAMP/remoteproc` target. That is correct for the vendor demo, but wrong for
+this layer because the Zephyr firmware is standalone.
+
+The patch in `recipes-bsp/dt-overlay-mchp/` changes the overlay so Linux:
+
+- reserves the Zephyr memory carveout
+- does not use `cpu4`
+- does not use `mmuart2`
+- does not try to attach to Zephyr through `remoteproc`
+
+Without this patch, Linux can panic during boot while trying to parse firmware
+resources that do not exist in the standalone Zephyr image.
+
+
