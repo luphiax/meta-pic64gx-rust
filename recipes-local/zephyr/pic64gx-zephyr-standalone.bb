@@ -9,15 +9,16 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 COMPATIBLE_MACHINE = "pic64gx-curiosity-kit-amp"
 
-PIC64GX_ZEPHYR_SUPPORTED_APPS ?= "blinky_amp"
-PIC64GX_ZEPHYR_EXAMPLES_SRCREV ?= "e695942408e44e4ccccc5b8823c7c17e14267681"
+PIC64GX_ZEPHYR_SUPPORTED_APPS ?= "blinky_amp helloworld_amp"
+PIC64GX_ZEPHYR_EXAMPLES_REPO ?= "git://github.com/luphiax/pic64gx-zephyr-examples;protocol=https"
+PIC64GX_ZEPHYR_EXAMPLES_SRCREV ?= "beaa26f24099348a4159ad819a0dad3279d165c4"
 
 ZEPHYR_BRANCH = "main"
 SRCREV_default = "d5777557c54cec9cd4b3db66e3ff413987eee393"
 SRCREV_pic64-zephyr-examples = "${PIC64GX_ZEPHYR_EXAMPLES_SRCREV}"
 
 SRC_URI_ZEPHYR = "git://github.com/pic64gx/pic64gx-zephyr.git;protocol=https"
-SRC_URI_APP = "git://github.com/pic64gx/pic64gx-zephyr-examples.git;protocol=https;subpath=apps/${PIC64GX_ZEPHYR_APP}"
+SRC_URI_APP = "${PIC64GX_ZEPHYR_EXAMPLES_REPO};subpath=apps/${PIC64GX_ZEPHYR_APP}"
 SRC_URI:append = " ${SRC_URI_ZEPHYR};nobranch=1;name=default;destsuffix=git/zephyr"
 SRC_URI:append = " ${SRC_URI_APP};name=pic64-zephyr-examples;nobranch=1;destsuffix=git/pic64gx-soc/apps/${PIC64GX_ZEPHYR_APP}"
 
