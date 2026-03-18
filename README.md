@@ -17,12 +17,14 @@ At a high level:
    `mchp-distro`.
 2. That distro masks the stock Microchip AMP Zephyr pipeline with `BBMASK`.
 3. `recipes-local/zephyr/pic64gx-zephyr-standalone.bb` builds one selectable
-   Zephyr app from `luphiax/pic64gx-zephyr-examples`.
-4. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` repackages the resulting
+   Zephyr app from the unified `pic64gx-zephyr-examples-rust` repository.
+4. `recipes-kernel/zephyr-kernel/zephyr-kernel-src-4.3.99.inc` pins the local
+   Zephyr 4.3.99 + Rust module stack used by this distro.
+5. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` repackages the resulting
    `zephyr-amp-application.elf` into `payload.bin` with `hss-payload-generator`.
-5. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
+6. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
    Zephyr as a standalone firmware instead of a `remoteproc/OpenAMP` target.
-6. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
+7. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
    adds the Linux demo applications from this layer.
 
 ## Layer layout
@@ -61,8 +63,10 @@ Yocto dependencies, including:
 
 It also expects:
 
-- the custom examples repository `https://github.com/luphiax/pic64gx-zephyr-examples`
+- the unified examples repository `https://github.com/luphiax/pic64gx-zephyr-examples-rust`
 - the Microchip AMP machine `pic64gx-curiosity-kit-amp`
+- `cargo` and `rustc` available in the host environment when building Rust
+  firmware variants
 
 ## Recommended build directory
 
@@ -111,6 +115,11 @@ The standalone Zephyr recipe currently supports:
 
 - `blinky_amp`
 - `helloworld_amp`
+- `rust_blinky`
+
+For `rust_blinky`, the layer still applies a local AMP-oriented `prj.conf` and
+board overlay so the sample runs on `u54_4` in the current Linux + Zephyr AMP
+setup.
 
 If no application is selected explicitly, the distro default is:
 
@@ -142,6 +151,12 @@ For `blinky_amp`:
 
 ```bash
 PIC64GX_ZEPHYR_APP=blinky_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
+```
+
+For `rust_blinky`:
+
+```bash
+PIC64GX_ZEPHYR_APP=rust_blinky MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
 ## Generated artifacts
@@ -249,5 +264,3 @@ The patch in `recipes-bsp/dt-overlay-mchp/` changes the overlay so Linux:
 
 Without this patch, Linux can panic during boot while trying to parse firmware
 resources that do not exist in the standalone Zephyr image.
-
-
