@@ -1,6 +1,5 @@
 SUMMARY = "PIC64GX standalone Zephyr application loaded by HSS"
 DESCRIPTION = "Builds a selectable standalone Zephyr application for PIC64GX and deploys it for HSS payload generation"
-FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 require recipes-kernel/zephyr-kernel/zephyr-sample.inc
 
@@ -12,11 +11,11 @@ COMPATIBLE_MACHINE = "pic64gx-curiosity-kit-amp"
 HOSTTOOLS += "cargo rustc"
 DEPENDS += "python3-jsonschema-native"
 
-PIC64GX_ZEPHYR_RUST_APPS ?= "rust_blinky"
+PIC64GX_ZEPHYR_RUST_APPS ?= "rust_blinky_amp"
 PIC64GX_ZEPHYR_SUPPORTED_APPS ?= "blinky_amp helloworld_amp ${PIC64GX_ZEPHYR_RUST_APPS}"
 
 PIC64GX_ZEPHYR_EXAMPLES_REPO ?= "git://github.com/luphiax/pic64gx-zephyr-examples-rust;protocol=https"
-PIC64GX_ZEPHYR_EXAMPLES_SRCREV ?= "352131688670ea352617bad03cd0058e8c430ab0"
+PIC64GX_ZEPHYR_EXAMPLES_SRCREV ?= "dee28e80710b5f55ce5cb36e8004a0c1f1a6eef4"
 
 PIC64GX_ZEPHYR_IS_RUST_APP = "${@'1' if (d.getVar('PIC64GX_ZEPHYR_APP') or '') in (d.getVar('PIC64GX_ZEPHYR_RUST_APPS') or '').split() else '0'}"
 
@@ -24,7 +23,6 @@ SRCREV_pic64-zephyr-app = "${PIC64GX_ZEPHYR_EXAMPLES_SRCREV}"
 
 SRC_URI_APP = "${PIC64GX_ZEPHYR_EXAMPLES_REPO};subpath=apps/${PIC64GX_ZEPHYR_APP}"
 SRC_URI:append = " ${SRC_URI_APP};name=pic64-zephyr-app;nobranch=1;destsuffix=git/pic64gx-soc/apps/${PIC64GX_ZEPHYR_APP}"
-SRC_URI:append = "${@' file://rust_blinky_amp.prj.conf file://rust_blinky_amp.pic64gx_curiosity_kit.overlay' if (d.getVar('PIC64GX_ZEPHYR_APP') or '') in (d.getVar('PIC64GX_ZEPHYR_RUST_APPS') or '').split() else ''}"
 
 ZEPHYR_SRC_DIR = "${WORKDIR}/git/pic64gx-soc/apps/${PIC64GX_ZEPHYR_APP}"
 do_compile[network] = "${PIC64GX_ZEPHYR_IS_RUST_APP}"
@@ -47,13 +45,6 @@ python () {
 
 do_configure:prepend() {
     if [ "${PIC64GX_ZEPHYR_IS_RUST_APP}" = "1" ]; then
-        # rust_blinky in the unified examples repo is still the standalone
-        # single-hart sample, so the layer adapts it to the Linux+AMP u54_4 flow.
-        install -m 0644 ${WORKDIR}/rust_blinky_amp.prj.conf ${ZEPHYR_SRC_DIR}/prj.conf
-        install -d ${ZEPHYR_SRC_DIR}/boards
-        install -m 0644 ${WORKDIR}/rust_blinky_amp.pic64gx_curiosity_kit.overlay \
-            ${ZEPHYR_SRC_DIR}/boards/pic64gx_curiosity_kit.overlay
-
         # cargo-native in this Yocto stack does not understand Cargo.lock
         # format v4 yet; downgrade the lockfile format in the workdir copy.
         sed -i 's/^version = 4$/version = 3/' ${ZEPHYR_SRC_DIR}/Cargo.lock
