@@ -115,11 +115,7 @@ The standalone Zephyr recipe currently supports:
 
 - `blinky_amp`
 - `helloworld_amp`
-- `rust_blinky`
-
-For `rust_blinky`, the layer still applies a local AMP-oriented `prj.conf` and
-board overlay so the sample runs on `u54_4` in the current Linux + Zephyr AMP
-setup.
+- `rust_blinky_amp`
 
 If no application is selected explicitly, the distro default is:
 
@@ -153,10 +149,10 @@ For `blinky_amp`:
 PIC64GX_ZEPHYR_APP=blinky_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
-For `rust_blinky`:
+For `rust_blinky_amp`:
 
 ```bash
-PIC64GX_ZEPHYR_APP=rust_blinky MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
+PIC64GX_ZEPHYR_APP=rust_blinky_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
 ## Generated artifacts
