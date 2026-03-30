@@ -43,14 +43,6 @@ python () {
         )
 }
 
-do_configure:prepend() {
-    if [ "${PIC64GX_ZEPHYR_IS_RUST_APP}" = "1" ]; then
-        # cargo-native in this Yocto stack does not understand Cargo.lock
-        # format v4 yet; downgrade the lockfile format in the workdir copy.
-        sed -i 's/^version = 4$/version = 3/' ${ZEPHYR_SRC_DIR}/Cargo.lock
-    fi
-}
-
 do_compile:prepend() {
     if [ "${PIC64GX_ZEPHYR_IS_RUST_APP}" = "1" ]; then
         # Zephyr Rust currently requires a newer Cargo/Rust toolchain than the
