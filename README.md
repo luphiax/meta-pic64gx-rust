@@ -3,7 +3,10 @@
 This layer customizes the Microchip PIC64GX Yocto BSP to run:
 
 - Linux on the standard PIC64GX AMP image flow
-- a standalone Zephyr application on `u54_4`, loaded by HSS from `payload.bin`
+- a standalone firmware on `u54_4`, loaded by HSS from `payload.bin`
+  The firmware can be either:
+  - a Zephyr standalone application
+  - a baremetal Rust example ELF
 - a small set of Linux user-space demo programs installed in the root filesystem
 
 The layer does not replace the board support package from scratch. It reuses the
@@ -18,13 +21,18 @@ At a high level:
 2. That distro masks the stock Microchip AMP Zephyr pipeline with `BBMASK`.
 3. `recipes-local/zephyr/pic64gx-zephyr-standalone.bb` builds one selectable
    Zephyr app from the unified `pic64gx-zephyr-examples-rust` repository.
-4. `recipes-kernel/zephyr-kernel/zephyr-kernel-src-4.3.99.inc` pins the local
+4. `recipes-local/baremetal/pic64gx-baremetal-standalone.bb` can build one
+   selectable baremetal Rust example from a local `pic64gx` crate checkout.
+5. Both producers publish a common canonical artifact,
+   `pic64gx-standalone-firmware.elf`.
+6. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` repackages that canonical ELF
+   into `payload.bin` with `hss-payload-generator`.
+7. `recipes-kernel/zephyr-kernel/zephyr-kernel-src-4.3.99.inc` pins the local
    Zephyr 4.3.99 + Rust module stack used by this distro.
-5. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` repackages the resulting
-   `zephyr-amp-application.elf` into `payload.bin` with `hss-payload-generator`.
-6. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
-   Zephyr as a standalone firmware instead of a `remoteproc/OpenAMP` target.
-7. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
+8. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
+   the `u54_4` payload as a standalone firmware instead of a
+   `remoteproc/OpenAMP` target.
+9. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
    adds the Linux demo applications from this layer.
 
 ## Layer layout
@@ -45,11 +53,13 @@ At a high level:
   Rust GPIO user-space demo installed into Linux.
 - `recipes-local/zephyr/pic64gx-zephyr-standalone.bb`
   Standalone Zephyr firmware recipe for PIC64GX AMP.
+- `recipes-local/baremetal/pic64gx-baremetal-standalone.bb`
+  Standalone baremetal Rust firmware recipe for PIC64GX AMP.
 - `recipes-bsp/u-boot/`
-  Custom HSS payload generation.
+  Custom HSS payload generation from a generic standalone firmware ELF.
 - `recipes-bsp/dt-overlay-mchp/`
   Patch that removes the stock `remoteproc/OpenAMP` Linux overlay nodes and
-  keeps only the memory/peripheral reservation needed by standalone Zephyr.
+  keeps only the memory/peripheral reservation needed by standalone firmware.
 
 ## Requirements
 
@@ -67,6 +77,9 @@ It also expects:
 - the Microchip AMP machine `pic64gx-curiosity-kit-amp`
 - `cargo` and `rustc` available in the host environment when building Rust
   firmware variants
+- optionally, for baremetal builds, a local checkout of the sibling
+  `pic64gx` crate at `../../pic64gx` relative to this layer, or an explicit
+  `PIC64GX_BAREMETAL_SRC` override
 
 ## Recommended build directory
 
@@ -123,6 +136,27 @@ If no application is selected explicitly, the distro default is:
 PIC64GX_ZEPHYR_APP ?= "blinky_amp"
 ```
 
+## Supported standalone firmware providers
+
+The default provider remains Zephyr:
+
+```conf
+PIC64GX_STANDALONE_FIRMWARE_PROVIDER ?= "zephyr"
+```
+
+To switch to the baremetal producer:
+
+```conf
+PIC64GX_STANDALONE_FIRMWARE_PROVIDER = "baremetal"
+PIC64GX_BAREMETAL_EXAMPLE ?= "test2_init_uart"
+```
+
+If the baremetal crate is not in the default sibling path, also set:
+
+```conf
+PIC64GX_BAREMETAL_SRC = "/absolute/path/to/pic64gx"
+```
+
 ## Build the image
 
 ### Default Zephyr app
@@ -155,6 +189,18 @@ For `rust_blinky_amp`:
 PIC64GX_ZEPHYR_APP=rust_blinky_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
+### Build a baremetal standalone payload
+
+To package the local baremetal example `test2_init_uart` instead of Zephyr:
+
+```bash
+export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PIC64GX_STANDALONE_FIRMWARE_PROVIDER PIC64GX_BAREMETAL_EXAMPLE PIC64GX_BAREMETAL_SRC"
+PIC64GX_STANDALONE_FIRMWARE_PROVIDER=baremetal \
+PIC64GX_BAREMETAL_EXAMPLE=test2_init_uart \
+MACHINE=pic64gx-curiosity-kit-amp \
+bitbake pic64gx-rust-image
+```
+
 ## Generated artifacts
 
 After the build, the main output directory is:
@@ -171,12 +217,15 @@ Important files:
   Compressed form of the full SD image.
 - `payload.bin`
   HSS payload used inside the image.
-- `payload-<app>.bin`
-  App-specific copy of the payload.
-- `zephyr-amp-application.elf`
-  Canonical Zephyr ELF consumed by HSS payload generation.
+- `payload-<id>.bin`
+  Firmware-specific copy of the payload. Zephyr keeps the previous `<app>`
+  naming; baremetal uses `baremetal-<example>`.
+- `pic64gx-standalone-firmware.elf`
+  Canonical standalone ELF consumed by HSS payload generation.
 - `pic64gx-zephyr-<app>.elf`
   App-specific Zephyr ELF for inspection/debugging.
+- `pic64gx-baremetal-<example>.elf`
+  Baremetal example ELF for inspection/debugging.
 
 ## Flash the SD card
 
@@ -201,12 +250,12 @@ Double-check the target device before flashing.
 After flashing the SD:
 
 - HSS loads `u-boot.bin` for the Linux domain on `u54_1`, `u54_2`, `u54_3`
-- HSS loads the selected Zephyr application on `u54_4`
+- HSS loads the selected standalone firmware on `u54_4`
 - U-Boot boots Linux from the generated image
-- Linux and Zephyr run in parallel
+- Linux and the standalone firmware run in parallel
 
-In this design, Zephyr is not started by Linux `remoteproc`. It is started by
-HSS as a standalone firmware.
+In this design, the standalone firmware is not started by Linux `remoteproc`.
+It is started by HSS as a standalone payload.
 
 ## How to run the programs
 
@@ -216,6 +265,15 @@ The Zephyr app selected with `PIC64GX_ZEPHYR_APP` starts automatically at boot.
 There is nothing to launch manually from Linux.
 
 To observe its serial output, use the Zephyr/U54_4 debug UART:
+
+```bash
+screen /dev/ttyUSB-MCHPDebugSerialD 115200
+```
+
+### Baremetal firmware
+
+The baremetal example selected with `PIC64GX_BAREMETAL_EXAMPLE` also starts
+automatically at boot, using the same `u54_4` slot and the same debug UART:
 
 ```bash
 screen /dev/ttyUSB-MCHPDebugSerialD 115200
@@ -249,14 +307,14 @@ screen /dev/ttyUSB-MCHPDebugSerialB 115200
 
 The stock Microchip AMP overlay describes the remote firmware as an
 `OpenAMP/remoteproc` target. That is correct for the vendor demo, but wrong for
-this layer because the Zephyr firmware is standalone.
+this layer because the `u54_4` firmware is standalone.
 
 The patch in `recipes-bsp/dt-overlay-mchp/` changes the overlay so Linux:
 
-- reserves the Zephyr memory carveout
+- reserves the standalone firmware memory carveout
 - does not use `cpu4`
 - does not use `mmuart2`
-- does not try to attach to Zephyr through `remoteproc`
+- does not try to attach to the firmware through `remoteproc`
 
 Without this patch, Linux can panic during boot while trying to parse firmware
 resources that do not exist in the standalone Zephyr image.
