@@ -23,16 +23,15 @@ At a high level:
    Zephyr app from the unified `pic64gx-zephyr-examples-rust` repository.
 4. `recipes-local/baremetal/pic64gx-baremetal-standalone.bb` can build one
    selectable baremetal Rust example from a local `pic64gx` crate checkout.
-5. Both producers publish a common canonical artifact,
-   `pic64gx-standalone-firmware.elf`.
-6. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` repackages that canonical ELF
-   into `payload.bin` with `hss-payload-generator`.
-7. `recipes-kernel/zephyr-kernel/zephyr-kernel-src-4.3.99.inc` pins the local
+5. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` selects the provider-specific
+   deployed ELF and repackages it into `payload.bin` with
+   `hss-payload-generator`.
+6. `recipes-kernel/zephyr-kernel/zephyr-kernel-src-4.3.99.inc` pins the local
    Zephyr 4.3.99 + Rust module stack used by this distro.
-8. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
+7. `recipes-bsp/dt-overlay-mchp/` patches the Linux AMP overlay so Linux treats
    the `u54_4` payload as a standalone firmware instead of a
    `remoteproc/OpenAMP` target.
-9. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
+8. `recipes-local/images/pic64gx-rust-image.bb` builds a minimal Linux image and
    adds the Linux demo applications from this layer.
 
 ## Layer layout
@@ -189,6 +188,11 @@ For `rust_blinky_amp`:
 PIC64GX_ZEPHYR_APP=rust_blinky_amp MACHINE=pic64gx-curiosity-kit-amp bitbake pic64gx-rust-image
 ```
 
+You can switch freely between `blinky_amp`, `helloworld_amp`, `rust_blinky_amp`,
+and the baremetal provider without manually cleaning the previous firmware
+recipe. Each provider now deploys its own uniquely named ELF, and `u-boot`
+consumes the selected one directly.
+
 ### Build a baremetal standalone payload
 
 To package the local baremetal example `test2_init_uart` instead of Zephyr:
@@ -220,12 +224,12 @@ Important files:
 - `payload-<id>.bin`
   Firmware-specific copy of the payload. Zephyr keeps the previous `<app>`
   naming; baremetal uses `baremetal-<example>`.
-- `pic64gx-standalone-firmware.elf`
-  Canonical standalone ELF consumed by HSS payload generation.
 - `pic64gx-zephyr-<app>.elf`
-  App-specific Zephyr ELF for inspection/debugging.
+  App-specific Zephyr ELF used by HSS payload generation and available for
+  inspection/debugging.
 - `pic64gx-baremetal-<example>.elf`
-  Baremetal example ELF for inspection/debugging.
+  Baremetal example ELF used by HSS payload generation and available for
+  inspection/debugging.
 
 ## Flash the SD card
 

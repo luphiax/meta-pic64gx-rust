@@ -57,7 +57,6 @@ do_deploy() {
     fi
 
     install -m 0644 ${firmware} ${DEPLOYDIR}/pic64gx-baremetal-${PIC64GX_BAREMETAL_EXAMPLE}.elf
-    install -m 0644 ${firmware} ${DEPLOYDIR}/pic64gx-standalone-firmware.elf
 }
 
 addtask deploy after do_compile before do_build
