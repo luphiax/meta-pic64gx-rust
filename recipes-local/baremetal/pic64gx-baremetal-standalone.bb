@@ -1,5 +1,5 @@
 SUMMARY = "PIC64GX standalone baremetal firmware loaded by HSS"
-DESCRIPTION = "Builds a selectable baremetal Rust example for PIC64GX and deploys it for HSS payload generation"
+DESCRIPTION = "Builds a selectable baremetal Rust app for PIC64GX and deploys it for HSS payload generation"
 
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
@@ -7,26 +7,31 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 COMPATIBLE_MACHINE = "pic64gx-curiosity-kit-amp"
 PIC64GX_BAREMETAL_SUPPORTED_APPS ?= "test2_init_uart"
+PIC64GX_BAREMETAL_USE_LOCAL_BASE = "${@'1' if (d.getVar('PIC64GX_BAREMETAL_SRC') or '').strip() else '0'}"
 
-inherit deploy externalsrc
+inherit deploy
 
 HOSTTOOLS += "cargo rustc"
 
-EXTERNALSRC ?= "${PIC64GX_BAREMETAL_SRC}"
-EXTERNALSRC_BUILD ?= "${WORKDIR}/extern-build"
+SRCREV_pic64baremetalbase = "${PIC64GX_BAREMETAL_BASE_SRCREV}"
+SRCREV_pic64baremetalapp = "${PIC64GX_BAREMETAL_EXAMPLES_SRCREV}"
+SRCREV_FORMAT = "pic64baremetalbase_pic64baremetalapp"
 
-SRCREV_pic64-baremetal-app = "${PIC64GX_BAREMETAL_EXAMPLES_SRCREV}"
-SRC_URI_APP = "${PIC64GX_BAREMETAL_EXAMPLES_REPO};subpath=apps/${PIC64GX_BAREMETAL_EXAMPLE};type=git-dependency"
-SRC_URI:append = " ${SRC_URI_APP};name=pic64-baremetal-app;nobranch=1;destsuffix=git/pic64gx-baremetal-apps/apps/${PIC64GX_BAREMETAL_EXAMPLE}"
+SRC_URI_BASE = "${@'' if d.getVar('PIC64GX_BAREMETAL_USE_LOCAL_BASE') == '1' else d.getVar('PIC64GX_BAREMETAL_BASE_REPO') + ';type=git-dependency;name=pic64baremetalbase;nobranch=1;destsuffix=git/pic64gx'}"
+SRC_URI_APP = "${PIC64GX_BAREMETAL_EXAMPLES_REPO};subpath=apps/${PIC64GX_BAREMETAL_EXAMPLE};type=git-dependency;name=pic64baremetalapp;nobranch=1;destsuffix=git/pic64gx-baremetal-apps/apps/${PIC64GX_BAREMETAL_EXAMPLE}"
+SRC_URI = "${SRC_URI_APP}"
+SRC_URI:prepend = "${SRC_URI_BASE} "
 
 do_compile[network] = "1"
 do_configure[noexec] = "1"
 do_install[noexec] = "1"
 
 python () {
+    import os
     import re
 
     example = d.getVar("PIC64GX_BAREMETAL_EXAMPLE") or ""
+    local_base = (d.getVar("PIC64GX_BAREMETAL_SRC") or "").strip()
     supported = sorted(filter(None, (d.getVar("PIC64GX_BAREMETAL_SUPPORTED_APPS") or "").split()))
 
     if not re.match(r"^[A-Za-z0-9_-]+$", example):
@@ -37,11 +42,17 @@ python () {
             f"{d.getVar('PN')}: unsupported PIC64GX_BAREMETAL_EXAMPLE '{example}'. "
             f"Supported values: {' '.join(supported)}"
         )
+
+    if local_base and not os.path.isfile(os.path.join(local_base, "Cargo.toml")):
+        bb.fatal(
+            f"{d.getVar('PN')}: PIC64GX_BAREMETAL_SRC='{local_base}' does not point to a baremetal crate root"
+        )
 }
 
 do_compile() {
     app_root="${WORKDIR}/git/pic64gx-baremetal-apps/apps/${PIC64GX_BAREMETAL_EXAMPLE}"
     app_src="${app_root}/src/main.rs"
+    base_root="${PIC64GX_BAREMETAL_SRC}"
     stage_root="${WORKDIR}/cargo-stage"
     stage="${stage_root}/pic64gx-stage"
 
@@ -49,8 +60,16 @@ do_compile() {
         bbfatal "Missing ${app_src} from ${PIC64GX_BAREMETAL_EXAMPLES_REPO}."
     fi
 
-    if [ ! -f ${S}/Cargo.toml ]; then
-        bbfatal "Missing ${S}/Cargo.toml. Set PIC64GX_BAREMETAL_SRC to the baremetal crate root."
+    if [ -z "${base_root}" ]; then
+        base_root="${WORKDIR}/git/pic64gx"
+    fi
+
+    if [ ! -f ${base_root}/Cargo.toml ]; then
+        if [ -n "${PIC64GX_BAREMETAL_SRC}" ]; then
+            bbfatal "Missing ${base_root}/Cargo.toml. Set PIC64GX_BAREMETAL_SRC to the baremetal crate root."
+        fi
+
+        bbfatal "Missing fetched base crate ${base_root}/Cargo.toml from ${PIC64GX_BAREMETAL_BASE_REPO}."
     fi
 
     export PATH="/usr/bin:/bin:${HOME}/.cargo/bin:${PATH}"
@@ -64,20 +83,27 @@ do_compile() {
     rm -rf ${stage_root}
     mkdir -p ${stage}/examples
 
-    cp ${S}/Cargo.toml ${stage}/Cargo.toml
-    cp ${S}/Cargo.lock ${stage}/Cargo.lock
-    cp ${S}/build.rs ${stage}/build.rs
-    cp ${S}/device.x ${stage}/device.x
-    cp ${S}/link.x ${stage}/link.x
-    cp ${S}/memory.x ${stage}/memory.x
-    cp ${S}/rust-toolchain.toml ${stage}/rust-toolchain.toml
-    cp -a ${S}/.cargo ${stage}/.cargo
-    cp -a ${S}/src ${stage}/src
+    cp ${base_root}/Cargo.toml ${stage}/Cargo.toml
+    if [ -f ${base_root}/Cargo.lock ]; then
+        cp ${base_root}/Cargo.lock ${stage}/Cargo.lock
+    fi
+    cp ${base_root}/build.rs ${stage}/build.rs
+    cp ${base_root}/device.x ${stage}/device.x
+    cp ${base_root}/link.x ${stage}/link.x
+    cp ${base_root}/memory.x ${stage}/memory.x
+    cp ${base_root}/rust-toolchain.toml ${stage}/rust-toolchain.toml
+    cp -a ${base_root}/.cargo ${stage}/.cargo
+    cp -a ${base_root}/src ${stage}/src
     cp ${app_src} ${stage}/examples/${PIC64GX_BAREMETAL_EXAMPLE}.rs
 
     cd ${stage}
+    cargo_lock_arg=""
+    if [ -f ${stage}/Cargo.lock ]; then
+        cargo_lock_arg="--locked"
+    fi
+
     cargo build \
-        --locked \
+        ${cargo_lock_arg} \
         --release \
         --target riscv64imac-unknown-none-elf \
         --features rt \

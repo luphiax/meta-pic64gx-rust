@@ -23,8 +23,8 @@ At a high level:
    Zephyr app from the unified `pic64gx-zephyr-examples-rust` repository.
 4. `recipes-local/baremetal/pic64gx-baremetal-standalone.bb` can build one
    selectable baremetal Rust app from the GitHub repository
-   `pic64gx-baremetal-examples-rust/apps/<name>`, staged onto the local
-   `pic64gx` base crate.
+   `pic64gx-baremetal-examples-rust/apps/<name>`, staged onto the pinned
+   `pic64gx` base crate repository.
 5. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` selects the provider-specific
    deployed ELF and repackages it into `payload.bin` with
    `hss-payload-generator`.
@@ -78,9 +78,8 @@ It also expects:
 - the Microchip AMP machine `pic64gx-curiosity-kit-amp`
 - `cargo` and `rustc` available in the host environment when building Rust
   firmware variants
-- for baremetal builds, a local checkout of the sibling `pic64gx` crate at
-  `../../pic64gx` relative to this layer, or an explicit
-  `PIC64GX_BAREMETAL_SRC` override
+- for baremetal builds, network access to fetch the base crate repository
+  `https://github.com/luphiax/pic64gx`
 - for baremetal builds, network access to fetch the examples repository
   `https://github.com/luphiax/pic64gx-baremetal-examples-rust`
 
@@ -154,17 +153,21 @@ PIC64GX_STANDALONE_FIRMWARE_PROVIDER = "baremetal"
 PIC64GX_BAREMETAL_EXAMPLE ?= "test2_init_uart"
 ```
 
-If the baremetal crate is not in the default sibling path, also set:
+The baremetal base crate and examples repositories are pinned in the distro
+with:
+
+```conf
+PIC64GX_BAREMETAL_BASE_REPO = "git://github.com/luphiax/pic64gx;protocol=https"
+PIC64GX_BAREMETAL_BASE_SRCREV = "d73f1eb247fa288962424cdd0da6e45bcd1eb976"
+PIC64GX_BAREMETAL_EXAMPLES_REPO = "git://github.com/luphiax/pic64gx-baremetal-examples-rust;protocol=https"
+PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "08af0e2e30f3331a65e168875c04076331dc9197"
+```
+
+If you want to override the base crate locally while keeping the same build
+command shape, you can still set:
 
 ```conf
 PIC64GX_BAREMETAL_SRC = "/absolute/path/to/pic64gx"
-```
-
-The baremetal examples repository is pinned in the distro with:
-
-```conf
-PIC64GX_BAREMETAL_EXAMPLES_REPO = "git://github.com/luphiax/pic64gx-baremetal-examples-rust;protocol=https"
-PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "08af0e2e30f3331a65e168875c04076331dc9197"
 ```
 
 ## Build the image
