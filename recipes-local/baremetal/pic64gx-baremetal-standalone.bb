@@ -105,13 +105,13 @@ do_compile() {
     cargo build \
         ${cargo_lock_arg} \
         --release \
-        --target riscv64imac-unknown-none-elf \
+        --target ${PIC64GX_BAREMETAL_TARGET} \
         --features rt \
         --example ${PIC64GX_BAREMETAL_EXAMPLE}
 }
 
 do_deploy() {
-    firmware="${B}/target/riscv64imac-unknown-none-elf/release/examples/${PIC64GX_BAREMETAL_EXAMPLE}"
+    firmware="${B}/target/${PIC64GX_BAREMETAL_TARGET}/release/examples/${PIC64GX_BAREMETAL_EXAMPLE}"
 
     if [ ! -f ${firmware} ]; then
         bbfatal "Missing built baremetal ELF ${firmware}"

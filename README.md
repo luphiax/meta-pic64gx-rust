@@ -158,9 +158,10 @@ with:
 
 ```conf
 PIC64GX_BAREMETAL_BASE_REPO = "git://github.com/luphiax/pic64gx;protocol=https"
-PIC64GX_BAREMETAL_BASE_SRCREV = "d73f1eb247fa288962424cdd0da6e45bcd1eb976"
+PIC64GX_BAREMETAL_BASE_SRCREV = "2307c41c30cbaccc0b6aee48d3f402f66f52d689"
+PIC64GX_BAREMETAL_TARGET = "riscv64gc-unknown-none-elf"
 PIC64GX_BAREMETAL_EXAMPLES_REPO = "git://github.com/luphiax/pic64gx-baremetal-examples-rust;protocol=https"
-PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "08af0e2e30f3331a65e168875c04076331dc9197"
+PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "68b0ee12760bb20ccb75ff7818d6d7cc2945db2e"
 ```
 
 If you want to override the base crate locally while keeping the same build
