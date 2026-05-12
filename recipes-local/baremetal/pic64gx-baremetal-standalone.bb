@@ -7,7 +7,6 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 COMPATIBLE_MACHINE = "pic64gx-curiosity-kit-amp"
 PIC64GX_BAREMETAL_SUPPORTED_APPS ?= "test2_init_uart"
-PIC64GX_BAREMETAL_USE_LOCAL_BASE = "${@'1' if (d.getVar('PIC64GX_BAREMETAL_SRC') or '').strip() else '0'}"
 
 inherit deploy
 
@@ -17,7 +16,7 @@ SRCREV_pic64baremetalbase = "${PIC64GX_BAREMETAL_BASE_SRCREV}"
 SRCREV_pic64baremetalapp = "${PIC64GX_BAREMETAL_EXAMPLES_SRCREV}"
 SRCREV_FORMAT = "pic64baremetalbase_pic64baremetalapp"
 
-SRC_URI_BASE = "${@'' if d.getVar('PIC64GX_BAREMETAL_USE_LOCAL_BASE') == '1' else d.getVar('PIC64GX_BAREMETAL_BASE_REPO') + ';type=git-dependency;name=pic64baremetalbase;nobranch=1;destsuffix=git/pic64gx'}"
+SRC_URI_BASE = "${PIC64GX_BAREMETAL_BASE_REPO};type=git-dependency;name=pic64baremetalbase;nobranch=1;destsuffix=git/pic64gx"
 SRC_URI_APP = "${PIC64GX_BAREMETAL_EXAMPLES_REPO};subpath=apps/${PIC64GX_BAREMETAL_EXAMPLE};type=git-dependency;name=pic64baremetalapp;nobranch=1;destsuffix=git/pic64gx-baremetal-apps/apps/${PIC64GX_BAREMETAL_EXAMPLE}"
 SRC_URI = "${SRC_URI_APP}"
 SRC_URI:prepend = "${SRC_URI_BASE} "
@@ -27,11 +26,9 @@ do_configure[noexec] = "1"
 do_install[noexec] = "1"
 
 python () {
-    import os
     import re
 
     example = d.getVar("PIC64GX_BAREMETAL_EXAMPLE") or ""
-    local_base = (d.getVar("PIC64GX_BAREMETAL_SRC") or "").strip()
     supported = sorted(filter(None, (d.getVar("PIC64GX_BAREMETAL_SUPPORTED_APPS") or "").split()))
 
     if not re.match(r"^[A-Za-z0-9_-]+$", example):
@@ -42,17 +39,12 @@ python () {
             f"{d.getVar('PN')}: unsupported PIC64GX_BAREMETAL_EXAMPLE '{example}'. "
             f"Supported values: {' '.join(supported)}"
         )
-
-    if local_base and not os.path.isfile(os.path.join(local_base, "Cargo.toml")):
-        bb.fatal(
-            f"{d.getVar('PN')}: PIC64GX_BAREMETAL_SRC='{local_base}' does not point to a baremetal crate root"
-        )
 }
 
 do_compile() {
     app_root="${WORKDIR}/git/pic64gx-baremetal-apps/apps/${PIC64GX_BAREMETAL_EXAMPLE}"
     app_src="${app_root}/src/main.rs"
-    base_root="${PIC64GX_BAREMETAL_SRC}"
+    base_root="${WORKDIR}/git/pic64gx"
     stage_root="${WORKDIR}/cargo-stage"
     stage="${stage_root}/pic64gx-stage"
 
@@ -60,15 +52,7 @@ do_compile() {
         bbfatal "Missing ${app_src} from ${PIC64GX_BAREMETAL_EXAMPLES_REPO}."
     fi
 
-    if [ -z "${base_root}" ]; then
-        base_root="${WORKDIR}/git/pic64gx"
-    fi
-
     if [ ! -f ${base_root}/Cargo.toml ]; then
-        if [ -n "${PIC64GX_BAREMETAL_SRC}" ]; then
-            bbfatal "Missing ${base_root}/Cargo.toml. Set PIC64GX_BAREMETAL_SRC to the baremetal crate root."
-        fi
-
         bbfatal "Missing fetched base crate ${base_root}/Cargo.toml from ${PIC64GX_BAREMETAL_BASE_REPO}."
     fi
 

@@ -158,17 +158,10 @@ with:
 
 ```conf
 PIC64GX_BAREMETAL_BASE_REPO = "git://github.com/luphiax/pic64gx;protocol=https"
-PIC64GX_BAREMETAL_BASE_SRCREV = "2307c41c30cbaccc0b6aee48d3f402f66f52d689"
+PIC64GX_BAREMETAL_BASE_SRCREV = "2ed34d73bb28b262e0aaf1f3e87f669d5e04f430"
 PIC64GX_BAREMETAL_TARGET = "riscv64gc-unknown-none-elf"
 PIC64GX_BAREMETAL_EXAMPLES_REPO = "git://github.com/luphiax/pic64gx-baremetal-examples-rust;protocol=https"
-PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "68b0ee12760bb20ccb75ff7818d6d7cc2945db2e"
-```
-
-If you want to override the base crate locally while keeping the same build
-command shape, you can still set:
-
-```conf
-PIC64GX_BAREMETAL_SRC = "/absolute/path/to/pic64gx"
+PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "c881af74d0103a806f8c9fc4235221277d8061af"
 ```
 
 ## Build the image
@@ -214,7 +207,7 @@ To package the baremetal app `test2_init_uart` from
 `pic64gx-baremetal-examples-rust/apps/test2_init_uart` instead of Zephyr:
 
 ```bash
-export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PIC64GX_STANDALONE_FIRMWARE_PROVIDER PIC64GX_BAREMETAL_EXAMPLE PIC64GX_BAREMETAL_SRC"
+export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PIC64GX_STANDALONE_FIRMWARE_PROVIDER PIC64GX_BAREMETAL_EXAMPLE"
 PIC64GX_STANDALONE_FIRMWARE_PROVIDER=baremetal \
 PIC64GX_BAREMETAL_EXAMPLE=test2_init_uart \
 MACHINE=pic64gx-curiosity-kit-amp \
