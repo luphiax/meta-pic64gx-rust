@@ -22,9 +22,8 @@ At a high level:
 3. `recipes-local/zephyr/pic64gx-zephyr-standalone.bb` builds one selectable
    Zephyr app from the unified `pic64gx-zephyr-examples-rust` repository.
 4. `recipes-local/baremetal/pic64gx-baremetal-standalone.bb` can build one
-   selectable baremetal Rust app from the GitHub repository
-   `pic64gx-baremetal-examples-rust/apps/<name>`, staged onto the pinned
-   `pic64gx` base crate repository.
+   selectable baremetal Rust example from the pinned `pic64gx` repository,
+   using Cargo examples from `pic64gx/examples/<name>.rs`.
 5. `recipes-bsp/u-boot/u-boot-mchp_%.bbappend` selects the provider-specific
    deployed ELF and repackages it into `payload.bin` with
    `hss-payload-generator`.
@@ -78,10 +77,8 @@ It also expects:
 - the Microchip AMP machine `pic64gx-curiosity-kit-amp`
 - `cargo` and `rustc` available in the host environment when building Rust
   firmware variants
-- for baremetal builds, network access to fetch the base crate repository
+- for baremetal builds, network access to fetch the baremetal Rust repository
   `https://github.com/luphiax/pic64gx`
-- for baremetal builds, network access to fetch the examples repository
-  `https://github.com/luphiax/pic64gx-baremetal-examples-rust`
 
 ## Recommended build directory
 
@@ -150,18 +147,16 @@ To switch to the baremetal producer:
 
 ```conf
 PIC64GX_STANDALONE_FIRMWARE_PROVIDER = "baremetal"
-PIC64GX_BAREMETAL_EXAMPLE ?= "test2_init_uart"
+PIC64GX_BAREMETAL_APP ?= "test2_init_uart"
 ```
 
-The baremetal base crate and examples repositories are pinned in
+The baremetal Rust repository is pinned in
 `recipes-local/baremetal/pic64gx-baremetal-standalone.bb` with:
 
 ```conf
-PIC64GX_BAREMETAL_BASE_REPO = "git://github.com/luphiax/pic64gx;protocol=https"
-PIC64GX_BAREMETAL_BASE_SRCREV = "2ed34d73bb28b262e0aaf1f3e87f669d5e04f430"
+PIC64GX_BAREMETAL_REPO = "git://github.com/luphiax/pic64gx;protocol=https"
+PIC64GX_BAREMETAL_SRCREV = "2ed34d73bb28b262e0aaf1f3e87f669d5e04f430"
 PIC64GX_BAREMETAL_TARGET = "riscv64gc-unknown-none-elf"
-PIC64GX_BAREMETAL_EXAMPLES_REPO = "git://github.com/luphiax/pic64gx-baremetal-examples-rust;protocol=https"
-PIC64GX_BAREMETAL_EXAMPLES_SRCREV = "c881af74d0103a806f8c9fc4235221277d8061af"
 ```
 
 ## Build the image
@@ -203,13 +198,13 @@ consumes the selected one directly.
 
 ### Build a baremetal standalone payload
 
-To package the baremetal app `test2_init_uart` from
-`pic64gx-baremetal-examples-rust/apps/test2_init_uart` instead of Zephyr:
+To package the baremetal Rust example `test2_init_uart` from
+`pic64gx/examples/test2_init_uart.rs` instead of Zephyr:
 
 ```bash
-export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PIC64GX_STANDALONE_FIRMWARE_PROVIDER PIC64GX_BAREMETAL_EXAMPLE"
+export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PIC64GX_STANDALONE_FIRMWARE_PROVIDER PIC64GX_BAREMETAL_APP"
 PIC64GX_STANDALONE_FIRMWARE_PROVIDER=baremetal \
-PIC64GX_BAREMETAL_EXAMPLE=test2_init_uart \
+PIC64GX_BAREMETAL_APP=test2_init_uart \
 MACHINE=pic64gx-curiosity-kit-amp \
 bitbake pic64gx-rust-image
 ```
@@ -285,7 +280,7 @@ screen /dev/ttyUSB-MCHPDebugSerialD 115200
 
 ### Baremetal firmware
 
-The baremetal example selected with `PIC64GX_BAREMETAL_EXAMPLE` also starts
+The baremetal app selected with `PIC64GX_BAREMETAL_APP` also starts
 automatically at boot, using the same `u54_4` slot and the same debug UART:
 
 ```bash
