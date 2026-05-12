@@ -153,8 +153,8 @@ PIC64GX_STANDALONE_FIRMWARE_PROVIDER = "baremetal"
 PIC64GX_BAREMETAL_EXAMPLE ?= "test2_init_uart"
 ```
 
-The baremetal base crate and examples repositories are pinned in the distro
-with:
+The baremetal base crate and examples repositories are pinned in
+`recipes-local/baremetal/pic64gx-baremetal-standalone.bb` with:
 
 ```conf
 PIC64GX_BAREMETAL_BASE_REPO = "git://github.com/luphiax/pic64gx;protocol=https"

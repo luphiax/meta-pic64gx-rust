@@ -7,6 +7,11 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 COMPATIBLE_MACHINE = "pic64gx-curiosity-kit-amp"
 PIC64GX_BAREMETAL_SUPPORTED_APPS ?= "test2_init_uart"
+PIC64GX_BAREMETAL_BASE_REPO ?= "git://github.com/luphiax/pic64gx;protocol=https"
+PIC64GX_BAREMETAL_BASE_SRCREV ?= "2ed34d73bb28b262e0aaf1f3e87f669d5e04f430"
+PIC64GX_BAREMETAL_TARGET ?= "riscv64gc-unknown-none-elf"
+PIC64GX_BAREMETAL_EXAMPLES_REPO ?= "git://github.com/luphiax/pic64gx-baremetal-examples-rust;protocol=https"
+PIC64GX_BAREMETAL_EXAMPLES_SRCREV ?= "c881af74d0103a806f8c9fc4235221277d8061af"
 
 inherit deploy
 
