@@ -15,7 +15,7 @@ PIC64GX_ZEPHYR_RUST_APPS ?= "rust_blinky_amp"
 PIC64GX_ZEPHYR_SUPPORTED_APPS ?= "blinky_amp helloworld_amp ${PIC64GX_ZEPHYR_RUST_APPS}"
 
 PIC64GX_ZEPHYR_EXAMPLES_REPO ?= "git://github.com/luphiax/pic64gx-zephyr-examples-rust;protocol=https"
-PIC64GX_ZEPHYR_EXAMPLES_SRCREV ?= "dee28e80710b5f55ce5cb36e8004a0c1f1a6eef4"
+PIC64GX_ZEPHYR_EXAMPLES_SRCREV ?= "f41aa8473c56982a517124a8dd0c780b3f7a5fa8"
 
 PIC64GX_ZEPHYR_IS_RUST_APP = "${@'1' if (d.getVar('PIC64GX_ZEPHYR_APP') or '') in (d.getVar('PIC64GX_ZEPHYR_RUST_APPS') or '').split() else '0'}"
 
