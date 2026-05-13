@@ -50,13 +50,9 @@ do_compile() {
     export CC="gcc"
 
     cd ${S}
-    cargo_lock_arg=""
-    if [ -f ${S}/Cargo.lock ]; then
-        cargo_lock_arg="--locked"
-    fi
 
     cargo build \
-        ${cargo_lock_arg} \
+        --locked \
         --release \
         --target ${PIC64GX_BAREMETAL_TARGET} \
         --features rt \
