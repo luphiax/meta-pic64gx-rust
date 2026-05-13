@@ -41,16 +41,6 @@ python () {
 }
 
 do_compile() {
-    app_src="${S}/examples/${PIC64GX_BAREMETAL_APP}.rs"
-
-    if [ ! -f ${app_src} ]; then
-        bbfatal "Missing ${app_src} from ${PIC64GX_BAREMETAL_REPO}."
-    fi
-
-    if [ ! -f ${S}/Cargo.toml ]; then
-        bbfatal "Missing fetched baremetal crate ${S}/Cargo.toml from ${PIC64GX_BAREMETAL_REPO}."
-    fi
-
     export PATH="/usr/bin:/bin:${HOME}/.cargo/bin:${PATH}"
 
     export CARGO_HOME="${CARGO_HOME:-${HOME}/.cargo}"
