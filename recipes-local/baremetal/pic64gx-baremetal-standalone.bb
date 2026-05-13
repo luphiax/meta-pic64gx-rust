@@ -47,7 +47,6 @@ do_compile() {
     export RUSTUP_HOME="${RUSTUP_HOME:-${HOME}/.rustup}"
     export CARGO_TARGET_DIR="${B}/target"
     export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="gcc"
-    export CC="gcc"
 
     cd ${S}
 
